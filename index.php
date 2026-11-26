@@ -1,0 +1,117 @@
+<?php
+require_once __DIR__ . "/includes/funcoes.php";
+$u = usuario();
+if ($u && $u["tipo"] === "administrador") { header("Location: " . url("admin/index.php")); exit; }
+
+$tipos     = $conn->query("SELECT DISTINCT tipo FROM espacos WHERE disponivel=1 ORDER BY tipo")->fetch_all(MYSQLI_ASSOC);
+$destaques = $conn->query("SELECT * FROM espacos WHERE disponivel=1 ORDER BY capacidade DESC LIMIT 3")->fetch_all(MYSQLI_ASSOC);
+$favIds    = idsFavoritos($conn);
+$buscasSalvas = $_SESSION["buscas_salvas"] ?? [];
+
+cabecalho("Início", "inicio");
+?>
+<section class="hero">
+  <div class="rotulo">Solicitação de espaços para eventos</div>
+  <h1>Qual evento você está planejando?</h1>
+  <p class="lead">Busque por tipo de espaço, data e quantidade de pessoas. Sua solicitação é analisada pelo administrador em até <strong>2 dias úteis</strong>.</p>
+
+  <form class="busca" method="get" action="<?= url('espacos/index.php') ?>">
+    <label>Tipo de espaço
+      <select name="tipo">
+        <option value="">Todos os tipos</option>
+        <?php foreach ($tipos as $t): ?>
+          <option value="<?= e($t["tipo"]) ?>"><?= e($t["tipo"]) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label>Data do evento
+      <input type="date" name="data" min="<?= date('Y-m-d') ?>">
+    </label>
+    <label>Quantidade de pessoas
+      <input type="number" name="pessoas" min="1" placeholder="Ex.: 80">
+    </label>
+    <button type="submit" class="btn-primario" data-loading-text="Buscando...">Buscar espaços</button>
+  </form>
+
+  <?php if (!empty($buscasSalvas)): ?>
+    <div class="buscas-frequentes">
+      <span class="rotulo-inline">Suas buscas salvas:</span>
+      <?php foreach ($buscasSalvas as $bs): ?>
+        <a class="chip-filtro" href="<?= url('espacos/index.php?' . http_build_query($bs['params'])) ?>">
+          🔍 <?= e($bs['titulo']) ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</section>
+
+<section class="como-funciona" aria-label="Como funciona o processo de reserva">
+  <div class="rotulo">Passo a passo transparente</div>
+  <h2>Como funciona sua solicitação</h2>
+  <div class="passos-grade">
+    <div class="passo-item">
+      <span class="passo-numero">01</span>
+      <strong>Escolha o espaço e a data</strong>
+      <p>Filtre por tipo de espaço, comodidades, data e quantidade de pessoas e compare até 3 opções lado a lado.</p>
+    </div>
+    <div class="passo-item">
+      <span class="passo-numero">02</span>
+      <strong>Preencha e revise os dados</strong>
+      <p>Informe o horário de início e término, o tipo de evento e aceite a política de cancelamento antes de enviar.</p>
+    </div>
+    <div class="passo-item">
+      <span class="passo-numero">03</span>
+      <strong>Análise em até 2 dias úteis</strong>
+      <p>Sua solicitação fica com status <em>Aguardando aprovação</em>. Você pode editar ou cancelar enquanto estiver em análise.</p>
+    </div>
+    <div class="passo-item">
+      <span class="passo-numero">04</span>
+      <strong>Notificação de confirmação</strong>
+      <p>Assim que o administrador aprovar, você recebe um aviso no topo do sistema e o espaço fica garantido na agenda.</p>
+    </div>
+  </div>
+</section>
+
+<section class="secao-destaques">
+  <div class="cabecalho-secao">
+    <div>
+      <div class="rotulo">Catálogo em destaque</div>
+      <h2>Espaços mais procurados</h2>
+    </div>
+    <a class="botao secundario pequeno" href="<?= url('espacos/index.php') ?>">Ver todos os espaços →</a>
+  </div>
+
+  <div class="grade">
+    <?php foreach ($destaques as $e):
+      $ehFav = in_array((int)$e["id"], $favIds);
+    ?>
+      <article class="card">
+        <div class="card-topo">
+          <span class="tag-tipo"><?= e($e["tipo"]) ?></span>
+          <form method="post" action="<?= url('favoritos.php') ?>" class="form-fav">
+            <input type="hidden" name="espaco_id" value="<?= (int)$e["id"] ?>">
+            <input type="hidden" name="retorno" value="<?= e($_SERVER['REQUEST_URI'] ?? url('index.php')) ?>">
+            <button type="submit" class="btn-favorito <?= $ehFav ? 'ativo' : '' ?>" title="<?= $ehFav ? 'Remover dos favoritos' : 'Salvar nos favoritos' ?>" aria-label="Favoritar <?= e($e['nome']) ?>">
+              <?= $ehFav ? '★ Salvo' : '☆ Favoritar' ?>
+            </button>
+          </form>
+        </div>
+
+        <strong class="card-titulo"><a href="<?= url('espacos/detalhes.php?id=' . $e["id"]) ?>"><?= e($e["nome"]) ?></a></strong>
+        <span class="info"><?= capacidadeTexto($e["capacidade"]) ?></span>
+        <span class="status-disponibilidade disp-livre">● Disponível para novas datas</span>
+
+        <?= renderChipsComodidades($e["comodidades"], 4) ?>
+
+        <div class="card-rodape">
+          <span class="preco"><?= moeda($e["preco"]) ?><small>/dia</small></span>
+          <div class="card-acoes">
+            <a class="botao secundario pequeno" href="<?= url('espacos/detalhes.php?id=' . $e["id"]) ?>">Ver detalhes</a>
+            <a class="botao pequeno" href="<?= url('reservas/solicitar.php?id=' . $e["id"]) ?>">Solicitar reserva</a>
+          </div>
+        </div>
+      </article>
+    <?php endforeach; ?>
+  </div>
+</section>
+<?php rodape(); ?>
