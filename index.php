@@ -1,117 +1,149 @@
 <?php
-require_once __DIR__ . "/includes/funcoes.php";
-$u = usuario();
-if ($u && $u["tipo"] === "administrador") { header("Location: " . url("admin/index.php")); exit; }
+declare(strict_types=1);
 
-$tipos     = $conn->query("SELECT DISTINCT tipo FROM espacos WHERE disponivel=1 ORDER BY tipo")->fetch_all(MYSQLI_ASSOC);
-$destaques = $conn->query("SELECT * FROM espacos WHERE disponivel=1 ORDER BY capacidade DESC LIMIT 3")->fetch_all(MYSQLI_ASSOC);
-$favIds    = idsFavoritos($conn);
-$buscasSalvas = $_SESSION["buscas_salvas"] ?? [];
+date_default_timezone_set('America/Sao_Paulo');
 
-cabecalho("Início", "inicio");
-?>
-<section class="hero">
-  <div class="rotulo">Solicitação de espaços para eventos</div>
-  <h1>Qual evento você está planejando?</h1>
-  <p class="lead">Busque por tipo de espaço, data e quantidade de pessoas. Sua solicitação é analisada pelo administrador em até <strong>2 dias úteis</strong>.</p>
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-  <form class="busca" method="get" action="<?= url('espacos/index.php') ?>">
-    <label>Tipo de espaço
-      <select name="tipo">
-        <option value="">Todos os tipos</option>
-        <?php foreach ($tipos as $t): ?>
-          <option value="<?= e($t["tipo"]) ?>"><?= e($t["tipo"]) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
-    <label>Data do evento
-      <input type="date" name="data" min="<?= date('Y-m-d') ?>">
-    </label>
-    <label>Quantidade de pessoas
-      <input type="number" name="pessoas" min="1" placeholder="Ex.: 80">
-    </label>
-    <button type="submit" class="btn-primario" data-loading-text="Buscando...">Buscar espaços</button>
-  </form>
+require_once __DIR__ . '/config/conexao.php';
+require_once __DIR__ . '/app/helpers.php';
 
-  <?php if (!empty($buscasSalvas)): ?>
-    <div class="buscas-frequentes">
-      <span class="rotulo-inline">Suas buscas salvas:</span>
-      <?php foreach ($buscasSalvas as $bs): ?>
-        <a class="chip-filtro" href="<?= url('espacos/index.php?' . http_build_query($bs['params'])) ?>">
-          🔍 <?= e($bs['titulo']) ?>
-        </a>
-      <?php endforeach; ?>
-    </div>
-  <?php endif; ?>
-</section>
+definirBaseUrl(__DIR__);
 
-<section class="como-funciona" aria-label="Como funciona o processo de reserva">
-  <div class="rotulo">Passo a passo transparente</div>
-  <h2>Como funciona sua solicitação</h2>
-  <div class="passos-grade">
-    <div class="passo-item">
-      <span class="passo-numero">01</span>
-      <strong>Escolha o espaço e a data</strong>
-      <p>Filtre por tipo de espaço, comodidades, data e quantidade de pessoas e compare até 3 opções lado a lado.</p>
-    </div>
-    <div class="passo-item">
-      <span class="passo-numero">02</span>
-      <strong>Preencha e revise os dados</strong>
-      <p>Informe o horário de início e término, o tipo de evento e aceite a política de cancelamento antes de enviar.</p>
-    </div>
-    <div class="passo-item">
-      <span class="passo-numero">03</span>
-      <strong>Análise em até 2 dias úteis</strong>
-      <p>Sua solicitação fica com status <em>Aguardando aprovação</em>. Você pode editar ou cancelar enquanto estiver em análise.</p>
-    </div>
-    <div class="passo-item">
-      <span class="passo-numero">04</span>
-      <strong>Notificação de confirmação</strong>
-      <p>Assim que o administrador aprovar, você recebe um aviso no topo do sistema e o espaço fica garantido na agenda.</p>
-    </div>
-  </div>
-</section>
+require_once __DIR__ . '/app/Models/usuario_model.php';
+require_once __DIR__ . '/app/Models/espaco_model.php';
+require_once __DIR__ . '/app/Models/favorito_model.php';
+require_once __DIR__ . '/app/Models/reserva_model.php';
 
-<section class="secao-destaques">
-  <div class="cabecalho-secao">
-    <div>
-      <div class="rotulo">Catálogo em destaque</div>
-      <h2>Espaços mais procurados</h2>
-    </div>
-    <a class="botao secundario pequeno" href="<?= url('espacos/index.php') ?>">Ver todos os espaços →</a>
-  </div>
+require_once __DIR__ . '/app/Controllers/home_controller.php';
+require_once __DIR__ . '/app/Controllers/auth_controller.php';
+require_once __DIR__ . '/app/Controllers/espaco_controller.php';
+require_once __DIR__ . '/app/Controllers/reserva_controller.php';
+require_once __DIR__ . '/app/Controllers/admin_controller.php';
 
-  <div class="grade">
-    <?php foreach ($destaques as $e):
-      $ehFav = in_array((int)$e["id"], $favIds);
-    ?>
-      <article class="card">
-        <div class="card-topo">
-          <span class="tag-tipo"><?= e($e["tipo"]) ?></span>
-          <form method="post" action="<?= url('favoritos.php') ?>" class="form-fav">
-            <input type="hidden" name="espaco_id" value="<?= (int)$e["id"] ?>">
-            <input type="hidden" name="retorno" value="<?= e($_SERVER['REQUEST_URI'] ?? url('index.php')) ?>">
-            <button type="submit" class="btn-favorito <?= $ehFav ? 'ativo' : '' ?>" title="<?= $ehFav ? 'Remover dos favoritos' : 'Salvar nos favoritos' ?>" aria-label="Favoritar <?= e($e['nome']) ?>">
-              <?= $ehFav ? '★ Salvo' : '☆ Favoritar' ?>
-            </button>
-          </form>
-        </div>
+function obterRotaAtual(): string
+{
+    if (!empty($_GET['rota']) && is_string($_GET['rota'])) {
+        return '/' . trim($_GET['rota'], '/') ?: '/';
+    }
 
-        <strong class="card-titulo"><a href="<?= url('espacos/detalhes.php?id=' . $e["id"]) ?>"><?= e($e["nome"]) ?></a></strong>
-        <span class="info"><?= capacidadeTexto($e["capacidade"]) ?></span>
-        <span class="status-disponibilidade disp-livre">● Disponível para novas datas</span>
+    $uri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    $base = rtrim(baseUrl(), '/');
+    if ($base !== '' && str_starts_with($uri, $base)) {
+        $uri = substr($uri, strlen($base));
+    }
+    $limpo = '/' . trim($uri, '/');
+    return $limpo === '//' ? '/' : $limpo;
+}
 
-        <?= renderChipsComodidades($e["comodidades"], 4) ?>
+$rota = obterRotaAtual();
 
-        <div class="card-rodape">
-          <span class="preco"><?= moeda($e["preco"]) ?><small>/dia</small></span>
-          <div class="card-acoes">
-            <a class="botao secundario pequeno" href="<?= url('espacos/detalhes.php?id=' . $e["id"]) ?>">Ver detalhes</a>
-            <a class="botao pequeno" href="<?= url('reservas/solicitar.php?id=' . $e["id"]) ?>">Solicitar reserva</a>
-          </div>
-        </div>
-      </article>
-    <?php endforeach; ?>
-  </div>
-</section>
-<?php rodape(); ?>
+if (preg_match('#^/espacos/(\d+)$#', $rota, $m)) {
+    espacosDetalhes($conn, (int)$m[1]);
+    exit;
+}
+
+switch ($rota) {
+    case '/':
+    case '/inicio':
+    case '/index.php':
+        homeIndex($conn);
+        break;
+
+    case '/ajuda':
+    case '/ajuda.php':
+        ajudaIndex($conn);
+        break;
+
+    case '/favoritos':
+    case '/favoritos/alternar':
+    case '/favoritos.php':
+        favoritosIndex($conn);
+        break;
+
+    case '/login':
+    case '/auth/login.php':
+        authLogin($conn);
+        break;
+
+    case '/cadastro':
+    case '/auth/cadastro.php':
+        authCadastro($conn);
+        break;
+
+    case '/logout':
+    case '/auth/logout.php':
+        authLogout();
+        break;
+
+    case '/espacos':
+    case '/espacos/busca':
+    case '/espacos/index.php':
+        espacosIndex($conn);
+        break;
+
+    case '/espacos/detalhes':
+    case '/espacos/detalhes.php':
+        espacosDetalhes($conn);
+        break;
+
+    case '/reservas':
+    case '/reservas/index.php':
+    case '/reservas/minhas':
+    case '/reservas/minhas.php':
+    case '/reservas/cancelar':
+    case '/reservas/desfazer-cancelamento':
+        reservasMinhas($conn);
+        break;
+
+    case '/reservas/solicitar':
+    case '/reservas/solicitar.php':
+        reservasSolicitar($conn);
+        break;
+
+    case '/admin':
+    case '/admin/index.php':
+    case '/admin/reservas/decidir':
+    case '/admin/reservas/desfazer':
+    case '/admin/reservas/lote':
+    case '/admin/espacos/alternar-painel':
+        adminPainel($conn);
+        break;
+
+    case '/admin/espacos':
+    case '/admin/espacos.php':
+    case '/admin/espacos/salvar':
+    case '/admin/espacos/acao':
+        adminEspacos($conn);
+        break;
+
+    case '/api/fotos':
+        apiBuscarFotos();
+        break;
+
+    case '/api/espacos/hidratar-foto':
+        apiHidratarFoto($conn);
+        break;
+
+    default:
+        http_response_code(404);
+        if (str_starts_with($rota, '/api/')) {
+            responderJson(['erro' => 'Endpoint não encontrado.'], 404);
+        }
+        $titulo        = 'Página não encontrada';
+        $itemMenuAtivo = '';
+        $notificacoes  = [];
+        $qtdFavs       = 0;
+        $usuarioAtual  = usuarioLogado();
+        $conteudo      = '<section class="estado-vazio-erro">'
+            . '<div class="rotulo">Erro 404</div>'
+            . '<h1>Página não encontrada</h1>'
+            . '<p class="nota">A rota solicitada (<code>' . e($rota) . '</code>) não existe no EventSpace.</p>'
+            . '<div class="acoes-erro"><a class="botao" href="' . url('') . '">Voltar para o início</a>'
+            . '<a class="botao secundario" href="' . url('espacos') . '">Explorar espaços</a></div>'
+            . '</section>';
+        require __DIR__ . '/app/Views/layout.php';
+        break;
+}

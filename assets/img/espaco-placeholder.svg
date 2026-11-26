@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Imagem ilustrativa do espaço EventSpace">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eaf2ef"/>
+      <stop offset="100%" stop-color="#f5f5f2"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1f4d3f"/>
+      <stop offset="100%" stop-color="#15352b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <rect x="60" y="70" width="680" height="310" fill="#ffffff" stroke="#d6d6d2" stroke-width="2"/>
+  <rect x="96" y="106" width="220" height="190" fill="url(#accent)" opacity="0.92"/>
+  <path d="M116 270 L176 175 L226 230 L264 195 L296 270 Z" fill="#eaf2ef" opacity="0.9"/>
+  <circle cx="255" cy="148" r="18" fill="#eaf2ef"/>
+  <line x1="355" y1="145" x2="675" y2="145" stroke="#141414" stroke-width="6"/>
+  <line x1="355" y1="185" x2="615" y2="185" stroke="#1f4d3f" stroke-width="4" opacity="0.65"/>
+  <line x1="355" y1="220" x2="650" y2="220" stroke="#d6d6d2" stroke-width="4"/>
+  <line x1="355" y1="250" x2="585" y2="250" stroke="#d6d6d2" stroke-width="4"/>
+  <rect x="355" y="280" width="145" height="36" fill="#1f4d3f"/>
+  <text x="427" y="303" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="700" fill="#ffffff" letter-spacing="1.5">EVENTSPACE</text>
+  <text x="400" y="352" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#5c5c5c" letter-spacing="2">ESPAÇO PARA EVENTOS</text>
+</svg>
